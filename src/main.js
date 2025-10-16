@@ -22,6 +22,19 @@ let layout = null;
 let selectedTile = null;
 let moves = 0;
 let state = 'playing'; // 'playing' | 'complete'
+let pendingResizeFrame = 0;
+
+function updateViewportUnits() {
+  const viewport = window.visualViewport;
+  const width = viewport ? viewport.width : window.innerWidth;
+  const height = viewport ? viewport.height : window.innerHeight;
+  if (width > 0) {
+    document.documentElement.style.setProperty('--app-width', `${width}px`);
+  }
+  if (height > 0) {
+    document.documentElement.style.setProperty('--app-height', `${height}px`);
+  }
+}
 
 function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
@@ -33,6 +46,17 @@ function resizeCanvas() {
     canvas.height = displayHeight;
   }
   layout = ui.computeLayout(canvas.width, canvas.height, grid.size);
+}
+
+function scheduleViewportSync() {
+  updateViewportUnits();
+  if (pendingResizeFrame) {
+    cancelAnimationFrame(pendingResizeFrame);
+  }
+  pendingResizeFrame = window.requestAnimationFrame(() => {
+    pendingResizeFrame = 0;
+    resizeCanvas();
+  });
 }
 
 function resetLevel(index) {
@@ -124,6 +148,7 @@ function render() {
 }
 
 function initialize() {
+  updateViewportUnits();
   resizeCanvas();
   inputManager = new InputManager(canvas, handleTap);
 
@@ -136,8 +161,22 @@ function initialize() {
     });
     resizeObserver.observe(canvas);
   }
-  window.addEventListener('resize', resizeCanvas);
-  window.addEventListener('orientationchange', resizeCanvas);
+
+  window.addEventListener('resize', scheduleViewportSync, { passive: true });
+  window.addEventListener('orientationchange', () => {
+    scheduleViewportSync();
+  });
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', scheduleViewportSync, {
+      passive: true,
+    });
+    window.visualViewport.addEventListener('scroll', scheduleViewportSync, {
+      passive: true,
+    });
+  }
+
+  window.addEventListener('pageshow', scheduleViewportSync);
 }
 
 initialize();
