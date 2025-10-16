@@ -1,0 +1,41 @@
+* {
+  margin: 0px;
+  padding: 0px;
+  border: 0px;
+  
+  touch-action: none;
+  -ms-touch-action: none;
+  
+  tap-highlight-color: rgba( 0, 0, 0, 0 );
+  -webkit-tap-highlight-color: rgba( 0, 0, 0, 0 );
+  -moz-tap-highlight-color: rgba( 0, 0, 0, 0 );
+  
+  -webkit-touch-callout: none;
+  
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+
+  user-drag: none;
+  -webkit-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  
+  /* 100% viewport width and height - needed because of iOS Safari when turning from landscape to portrait */
+  width: 100vw;
+  height: 100vh;
+}
+
+body {
+  background-color: #000000;
+}
+
+canvas {
+  display: block;
+}
