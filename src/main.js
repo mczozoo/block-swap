@@ -148,6 +148,7 @@ function update(delta) {
 function render() {
   renderer.begin(canvas.width, canvas.height, CONFIG.baseBackground);
   if (currentTexture) {
+    ui.drawReference(renderer, currentTexture);
     ui.drawBoard(renderer, grid, currentTexture);
     ui.drawSelection(renderer, selectedTile, grid);
   } else if (assetLoadError) {
