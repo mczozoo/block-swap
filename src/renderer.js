@@ -206,19 +206,21 @@ export class Renderer {
       x2, y2,
     ]);
 
-    const texCoords = new Float32Array([
-      0, 0,
-      1, 0,
-      0, 1,
-      0, 1,
-      1, 0,
-      1, 1,
-    ]);
-
     gl.bindBuffer(gl.ARRAY_BUFFER, this.texPositionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([
+        0, 0,
+        1, 0,
+        0, 1,
+        0, 1,
+        1, 0,
+        1, 1,
+      ]),
+      gl.DYNAMIC_DRAW,
+    );
     gl.drawArrays(gl.TRIANGLES, 0, RECT_VERTEX_COUNT);
 
     return { width: entry.width, height: entry.height };
@@ -261,6 +263,85 @@ export class Renderer {
       width,
       height,
     };
+  }
+
+  createTextureFromImage(image) {
+    const gl = this.gl;
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.generateMipmap(gl.TEXTURE_2D);
+
+    return {
+      texture,
+      width: image.width,
+      height: image.height,
+    };
+  }
+
+  drawTexture(textureInfo, x, y, width, height, texCoords) {
+    if (!textureInfo) {
+      return;
+    }
+
+    const gl = this.gl;
+    this._useTextProgram(textureInfo.texture);
+
+    const x1 = x;
+    const y1 = y;
+    const x2 = x + width;
+    const y2 = y + height;
+
+    const positions = new Float32Array([
+      x1, y1,
+      x2, y1,
+      x1, y2,
+      x1, y2,
+      x2, y1,
+      x2, y2,
+    ]);
+
+    const coords = texCoords
+      ? new Float32Array([
+          texCoords.u0,
+          texCoords.v0,
+          texCoords.u1,
+          texCoords.v0,
+          texCoords.u0,
+          texCoords.v1,
+          texCoords.u0,
+          texCoords.v1,
+          texCoords.u1,
+          texCoords.v0,
+          texCoords.u1,
+          texCoords.v1,
+        ])
+      : new Float32Array([
+          0,
+          0,
+          1,
+          0,
+          0,
+          1,
+          0,
+          1,
+          1,
+          0,
+          1,
+          1,
+        ]);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texPositionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.DYNAMIC_DRAW);
+    gl.drawArrays(gl.TRIANGLES, 0, RECT_VERTEX_COUNT);
   }
 
   clearTextCache() {
