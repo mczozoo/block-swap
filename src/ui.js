@@ -9,7 +9,7 @@ export class UI {
     this.layout = null;
   }
 
-  computeLayout(width, height, gridSize) {
+  computeLayout(width, height, _gridSize) {
     const shorterSide = Math.min(width, height);
     const padding = shorterSide * CONFIG.paddingRatio;
     const contentWidth = width - padding * 2;
@@ -25,14 +25,61 @@ export class UI {
     };
 
     const playAreaTop = hudRect.y + hudRect.height + gap;
-    const playAreaHeight = height - playAreaTop - padding;
-    const gridSizePx = Math.min(contentWidth, playAreaHeight);
-    const playGrid = {
-      x: width / 2 - gridSizePx / 2,
-      y: playAreaTop + (playAreaHeight - gridSizePx) / 2,
-      width: gridSizePx,
-      height: gridSizePx,
+    const availableHeight = Math.max(0, height - playAreaTop - padding);
+    const availableRect = {
+      x: padding,
+      y: playAreaTop,
+      width: contentWidth,
+      height: availableHeight,
     };
+
+    const isLandscape = width > height;
+    let referenceRect = { x: 0, y: 0, width: 0, height: 0 };
+    let playGrid = { x: 0, y: 0, width: 0, height: 0 };
+
+    if (availableRect.width > 0 && availableRect.height > 0) {
+      if (isLandscape) {
+        const squareSize = Math.min(
+          availableRect.height,
+          Math.max(0, (availableRect.width - gap) / 2),
+        );
+        const totalWidth = squareSize * 2 + gap;
+        const originX = availableRect.x + (availableRect.width - totalWidth) / 2;
+        const originY = availableRect.y + (availableRect.height - squareSize) / 2;
+        referenceRect = {
+          x: originX,
+          y: originY,
+          width: squareSize,
+          height: squareSize,
+        };
+        playGrid = {
+          x: originX + squareSize + gap,
+          y: originY,
+          width: squareSize,
+          height: squareSize,
+        };
+      } else {
+        const squareSize = Math.min(
+          availableRect.width,
+          Math.max(0, (availableRect.height - gap) / 2),
+        );
+        const totalHeight = squareSize * 2 + gap;
+        const originX = availableRect.x + (availableRect.width - squareSize) / 2;
+        const originY = availableRect.y + (availableRect.height - totalHeight) / 2;
+        referenceRect = {
+          x: originX,
+          y: originY,
+          width: squareSize,
+          height: squareSize,
+        };
+        playGrid = {
+          x: originX,
+          y: originY + squareSize + gap,
+          width: squareSize,
+          height: squareSize,
+        };
+      }
+    }
 
     const buttonWidth = Math.min(200, hudRect.width * 0.25);
     const buttonHeight = Math.min(64, hudRect.height * 0.65);
@@ -75,10 +122,12 @@ export class UI {
       padding,
       hudRect,
       playGrid,
+      referenceRect,
       restartButton,
       completionPanel,
       panelRestart,
       panelNext,
+      isLandscape,
     };
 
     return this.layout;
@@ -116,6 +165,24 @@ export class UI {
     const { playGrid } = this.layout;
     renderer.drawRect(playGrid.x, playGrid.y, playGrid.width, playGrid.height, CONFIG.tileBackground);
     this._drawPlayTiles(renderer, grid, texture);
+  }
+
+  drawReference(renderer, texture) {
+    if (!this.layout) {
+      return;
+    }
+    const { referenceRect } = this.layout;
+    if (referenceRect.width <= 0 || referenceRect.height <= 0) {
+      return;
+    }
+    renderer.drawRect(
+      referenceRect.x,
+      referenceRect.y,
+      referenceRect.width,
+      referenceRect.height,
+      CONFIG.targetBackground,
+    );
+    renderer.drawTexture(texture, referenceRect.x, referenceRect.y, referenceRect.width, referenceRect.height);
   }
 
   _drawPlayTiles(renderer, grid, texture) {
