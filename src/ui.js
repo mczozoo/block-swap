@@ -1,4 +1,4 @@
-import { CONFIG, hexToRgba } from './config.js';
+import { CONFIG } from './config.js';
 
 function rectContains(rect, point) {
   return point.x >= rect.x && point.x <= rect.x + rect.width && point.y >= rect.y && point.y <= rect.y + rect.height;
@@ -12,61 +12,26 @@ export class UI {
   computeLayout(width, height, gridSize) {
     const shorterSide = Math.min(width, height);
     const padding = shorterSide * CONFIG.paddingRatio;
-    const contentX = padding;
-    const contentY = padding;
     const contentWidth = width - padding * 2;
     const contentHeight = height - padding * 2;
-    const hudHeight = Math.min(shorterSide * 0.15, contentHeight * 0.2);
+    const hudHeight = Math.min(shorterSide * 0.15, contentHeight * 0.18);
     const gap = shorterSide * 0.05;
 
-    const orientation = width >= height ? 'landscape' : 'portrait';
-    const playAreaHeight = contentHeight - hudHeight - gap;
-
-    let targetGrid;
-    let playGrid;
-    if (orientation === 'landscape') {
-      const availableWidth = contentWidth - gap;
-      const halfWidth = availableWidth / 2;
-      const gridSizePx = Math.min(halfWidth, playAreaHeight);
-      const extraX = halfWidth - gridSizePx;
-      const offsetY = contentY + hudHeight + (playAreaHeight - gridSizePx) / 2;
-      targetGrid = {
-        x: contentX + extraX / 2,
-        y: offsetY,
-        width: gridSizePx,
-        height: gridSizePx,
-      };
-      playGrid = {
-        x: contentX + halfWidth + gap + extraX / 2,
-        y: offsetY,
-        width: gridSizePx,
-        height: gridSizePx,
-      };
-    } else {
-      const availableHeight = playAreaHeight - gap;
-      const halfHeight = availableHeight / 2;
-      const gridSizePx = Math.min(contentWidth, halfHeight);
-      const extraY = halfHeight - gridSizePx;
-      const offsetX = contentX + (contentWidth - gridSizePx) / 2;
-      targetGrid = {
-        x: offsetX,
-        y: contentY + hudHeight + extraY / 2,
-        width: gridSizePx,
-        height: gridSizePx,
-      };
-      playGrid = {
-        x: offsetX,
-        y: contentY + hudHeight + halfHeight + gap + extraY / 2,
-        width: gridSizePx,
-        height: gridSizePx,
-      };
-    }
-
     const hudRect = {
-      x: contentX,
-      y: contentY,
+      x: padding,
+      y: padding,
       width: contentWidth,
       height: hudHeight,
+    };
+
+    const playAreaTop = hudRect.y + hudRect.height + gap;
+    const playAreaHeight = height - playAreaTop - padding;
+    const gridSizePx = Math.min(contentWidth, playAreaHeight);
+    const playGrid = {
+      x: width / 2 - gridSizePx / 2,
+      y: playAreaTop + (playAreaHeight - gridSizePx) / 2,
+      width: gridSizePx,
+      height: gridSizePx,
     };
 
     const buttonWidth = Math.min(200, hudRect.width * 0.25);
@@ -107,11 +72,9 @@ export class UI {
     };
 
     this.layout = {
-      orientation,
       padding,
       hudRect,
       playGrid,
-      targetGrid,
       restartButton,
       completionPanel,
       panelRestart,
@@ -149,34 +112,13 @@ export class UI {
     });
   }
 
-  drawGrids(renderer, grid, targetPattern, colors) {
-    const { targetGrid, playGrid } = this.layout;
-    renderer.drawRect(targetGrid.x, targetGrid.y, targetGrid.width, targetGrid.height, CONFIG.targetBackground);
+  drawBoard(renderer, grid, texture) {
+    const { playGrid } = this.layout;
     renderer.drawRect(playGrid.x, playGrid.y, playGrid.width, playGrid.height, CONFIG.tileBackground);
-
-    this._drawTargetPattern(renderer, targetPattern, colors);
-    this._drawPlayTiles(renderer, grid, colors);
+    this._drawPlayTiles(renderer, grid, texture);
   }
 
-  _drawTargetPattern(renderer, pattern, colors) {
-    const { targetGrid } = this.layout;
-    const size = pattern.length;
-    const unit = targetGrid.width / size;
-    const tileSize = unit * (1 - CONFIG.tileSpacingRatio);
-    const offset = (unit - tileSize) / 2;
-
-    for (let row = 0; row < size; row += 1) {
-      for (let col = 0; col < size; col += 1) {
-        const color = colors[pattern[row][col] % colors.length];
-        const rgba = hexToRgba(color, 1.0);
-        const x = targetGrid.x + col * unit + offset;
-        const y = targetGrid.y + row * unit + offset;
-        renderer.drawRect(x, y, tileSize, tileSize, rgba);
-      }
-    }
-  }
-
-  _drawPlayTiles(renderer, grid, colors) {
+  _drawPlayTiles(renderer, grid, texture) {
     const { playGrid } = this.layout;
     const size = grid.size;
     const unit = playGrid.width / size;
@@ -185,11 +127,17 @@ export class UI {
 
     for (const tile of grid.tiles) {
       const { row, col } = grid.getTilePosition(tile);
-      const color = colors[tile.colorId % colors.length];
-      const rgba = hexToRgba(color, 1.0);
       const x = playGrid.x + col * unit + offset;
       const y = playGrid.y + row * unit + offset;
-      renderer.drawRect(x, y, tileSize, tileSize, rgba);
+      const pieceRow = Math.floor(tile.pieceId / size);
+      const pieceCol = tile.pieceId % size;
+      const texCoords = {
+        u0: pieceCol / size,
+        v0: pieceRow / size,
+        u1: (pieceCol + 1) / size,
+        v1: (pieceRow + 1) / size,
+      };
+      renderer.drawTexture(texture, x, y, tileSize, tileSize, texCoords);
     }
 
     if (grid.pulseTimer > 0) {

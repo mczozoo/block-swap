@@ -20,22 +20,22 @@ export class Grid {
     const targetLookup = new Map();
     for (let row = 0; row < size; row += 1) {
       for (let col = 0; col < size; col += 1) {
-        const colorId = level.target[row][col];
-        if (!targetLookup.has(colorId)) {
-          targetLookup.set(colorId, { row, col });
+        const pieceId = level.target[row][col];
+        if (!targetLookup.has(pieceId)) {
+          targetLookup.set(pieceId, { row, col });
         }
       }
     }
     let idCounter = 0;
     for (let row = 0; row < size; row += 1) {
       for (let col = 0; col < size; col += 1) {
-        const colorId = level.scrambled[row][col];
-        const targetPosition = targetLookup.get(colorId);
-        const targetRow = targetPosition ? targetPosition.row : this._findTargetRow(level, colorId, idCounter);
-        const targetCol = targetPosition ? targetPosition.col : this._findTargetCol(level, colorId, idCounter);
+        const pieceId = level.scrambled[row][col];
+        const targetPosition = targetLookup.get(pieceId);
+        const targetRow = targetPosition ? targetPosition.row : this._findTargetRow(level, pieceId, idCounter);
+        const targetCol = targetPosition ? targetPosition.col : this._findTargetCol(level, pieceId, idCounter);
         this.tiles.push({
           id: idCounter,
-          colorId,
+          pieceId,
           currentRow: row,
           currentCol: col,
           targetRow,
@@ -47,11 +47,11 @@ export class Grid {
     }
   }
 
-  _findTargetRow(level, colorId, fallbackIndex) {
+  _findTargetRow(level, pieceId, fallbackIndex) {
     const { size } = level;
     for (let row = 0; row < size; row += 1) {
       for (let col = 0; col < size; col += 1) {
-        if (level.target[row][col] === colorId) {
+        if (level.target[row][col] === pieceId) {
           return row;
         }
       }
@@ -59,11 +59,11 @@ export class Grid {
     return Math.floor(fallbackIndex / size);
   }
 
-  _findTargetCol(level, colorId, fallbackIndex) {
+  _findTargetCol(level, pieceId, fallbackIndex) {
     const { size } = level;
     for (let row = 0; row < size; row += 1) {
       for (let col = 0; col < size; col += 1) {
-        if (level.target[row][col] === colorId) {
+        if (level.target[row][col] === pieceId) {
           return col;
         }
       }

@@ -16,6 +16,8 @@ const renderer = new Renderer(gl);
 const ui = new UI();
 let inputManager = null;
 
+const IMAGE_PATHS = ['image/image1.jpg', 'image/image2.jpg', 'image/image3.jpg'];
+
 let currentLevelIndex = 0;
 let grid = new Grid(LEVELS[currentLevelIndex]);
 let layout = null;
@@ -23,6 +25,9 @@ let selectedTile = null;
 let moves = 0;
 let state = 'playing'; // 'playing' | 'complete'
 let pendingResizeFrame = 0;
+let textures = [];
+let currentTexture = null;
+let assetLoadError = null;
 
 function updateViewportUnits() {
   const viewport = window.visualViewport;
@@ -68,6 +73,9 @@ function resetLevel(index) {
   state = 'playing';
   grid.pulseTimer = 0;
   layout = ui.computeLayout(canvas.width, canvas.height, grid.size);
+  if (textures.length > 0) {
+    currentTexture = textures[currentLevelIndex % textures.length];
+  }
 }
 
 function nextLevel() {
@@ -80,6 +88,9 @@ function restartLevel() {
 
 function handleTap(point) {
   if (!layout) {
+    return;
+  }
+  if (!currentTexture) {
     return;
   }
   if (state === 'complete') {
@@ -136,8 +147,24 @@ function update(delta) {
 
 function render() {
   renderer.begin(canvas.width, canvas.height, CONFIG.baseBackground);
-  ui.drawGrids(renderer, grid, LEVELS[currentLevelIndex % LEVELS.length].target, CONFIG.colors);
-  ui.drawSelection(renderer, selectedTile, grid);
+  if (currentTexture) {
+    ui.drawBoard(renderer, grid, currentTexture);
+    ui.drawSelection(renderer, selectedTile, grid);
+  } else if (assetLoadError) {
+    renderer.drawText('Failed to load textures', canvas.width / 2, canvas.height / 2, {
+      font: CONFIG.textFont,
+      color: CONFIG.hudTextColor,
+      align: 'center',
+      baseline: 'middle',
+    });
+  } else {
+    renderer.drawText('Loading images…', canvas.width / 2, canvas.height / 2, {
+      font: CONFIG.textFont,
+      color: CONFIG.hudTextColor,
+      align: 'center',
+      baseline: 'middle',
+    });
+  }
   ui.drawHud(renderer, {
     level: LEVELS[currentLevelIndex % LEVELS.length].id,
     moves,
@@ -147,13 +174,48 @@ function render() {
   }
 }
 
-function initialize() {
+async function loadImage(path) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Failed to load image: ${path}`));
+    image.src = path;
+  });
+}
+
+async function loadTextures() {
+  const loadedTextures = [];
+  for (const path of IMAGE_PATHS) {
+    // eslint-disable-next-line no-await-in-loop
+    const image = await loadImage(path);
+    loadedTextures.push(renderer.createTextureFromImage(image));
+  }
+  return loadedTextures;
+}
+
+async function initializeAsync() {
   updateViewportUnits();
   resizeCanvas();
+
+  try {
+    textures = await loadTextures();
+    if (textures.length > 0) {
+      currentTexture = textures[currentLevelIndex % textures.length];
+    }
+  } catch (error) {
+    console.error(error);
+    assetLoadError = error;
+  }
+
   inputManager = new InputManager(canvas, handleTap);
 
   const loop = new GameLoop({ update, render });
   loop.start();
+
+  if (textures.length > 0) {
+    resetLevel(currentLevelIndex);
+  }
 
   if (window.ResizeObserver) {
     const resizeObserver = new ResizeObserver(() => {
@@ -179,4 +241,4 @@ function initialize() {
   window.addEventListener('pageshow', scheduleViewportSync);
 }
 
-initialize();
+initializeAsync();
