@@ -308,8 +308,8 @@ export class Renderer {
     const coords = (() => {
       if (texCoords) {
         const { u0, v0, u1, v1 } = texCoords;
-        const top = 1 - v0;
-        const bottom = 1 - v1;
+        const top = v0;
+        const bottom = v1;
         return new Float32Array([
           u0, top,
           u1, top,
