@@ -262,20 +262,6 @@ export class UI {
       baseline: 'middle',
     });
 
-    if (typeof state.goalMoves === 'number') {
-      renderer.drawText(
-        `Par ${state.goalMoves}`,
-        completionPanel.x + completionPanel.width / 2,
-        completionPanel.y + completionPanel.height * 0.58,
-        {
-          font: CONFIG.smallTextFont,
-          color: CONFIG.buttonTextColor,
-          align: 'center',
-          baseline: 'middle',
-        },
-      );
-    }
-
     renderer.drawRect(panelRestart.x, panelRestart.y, panelRestart.width, panelRestart.height, CONFIG.buttonBackground);
     renderer.drawRect(panelNext.x, panelNext.y, panelNext.width, panelNext.height, CONFIG.buttonBackground);
 
