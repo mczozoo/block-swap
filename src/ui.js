@@ -255,6 +255,11 @@ export class UI {
       return;
     }
     for (const piece of pieces) {
+      if (piece.baseAlpha == null) {
+        piece.baseAlpha = piece.color?.[3] ?? 1;
+      }
+      const targetAlpha = (piece.baseAlpha ?? 1) * (piece.opacity ?? 1);
+      piece.color[3] = targetAlpha;
       renderer.drawRect(piece.renderX, piece.renderY, piece.renderWidth, piece.renderHeight, piece.color);
     }
   }
