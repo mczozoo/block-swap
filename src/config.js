@@ -12,6 +12,7 @@ export const CONFIG = {
   solvedGlowColor: [0.24, 0.8, 0.52, 0.3],
   tutorialOverlayColor: [0.02, 0.03, 0.06, 0.75],
   tutorialPanelColor: [0.09, 0.12, 0.24, 0.96],
+  tutorialTileColorDefault: [0.18, 0.2, 0.3, 1.0],
   tutorialTileColorA: [0.23, 0.62, 0.93, 1.0],
   tutorialTileColorB: [0.98, 0.55, 0.29, 1.0],
   tutorialPointerColor: [1.0, 0.98, 0.92, 0.92],
