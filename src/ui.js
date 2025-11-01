@@ -7,6 +7,7 @@ function rectContains(rect, point) {
 export class UI {
   constructor() {
     this.layout = null;
+    this.tileSpacingRatio = CONFIG.tileSpacingRatio;
   }
 
   computeLayout(width, height, _gridSize) {
@@ -167,10 +168,18 @@ export class UI {
     });
   }
 
-  drawBoard(renderer, grid, texture) {
+  drawBoard(renderer, grid, texture, options = {}) {
     const { playGrid } = this.layout;
+    const revealProgress = Math.max(0, Math.min(1, options.revealProgress ?? 0));
+    const tileSpacingRatio = CONFIG.tileSpacingRatio * (1 - revealProgress);
+    this.tileSpacingRatio = tileSpacingRatio;
+
     renderer.drawRect(playGrid.x, playGrid.y, playGrid.width, playGrid.height, CONFIG.tileBackground);
-    this._drawPlayTiles(renderer, grid, texture);
+    this._drawPlayTiles(renderer, grid, texture, tileSpacingRatio);
+  }
+
+  getTileSpacingRatio() {
+    return this.tileSpacingRatio;
   }
 
   drawReference(renderer, texture) {
@@ -191,11 +200,11 @@ export class UI {
     renderer.drawTexture(texture, referenceRect.x, referenceRect.y, referenceRect.width, referenceRect.height);
   }
 
-  _drawPlayTiles(renderer, grid, texture) {
+  _drawPlayTiles(renderer, grid, texture, tileSpacingRatio) {
     const { playGrid } = this.layout;
     const size = grid.size;
     const unit = playGrid.width / size;
-    const tileSize = unit * (1 - CONFIG.tileSpacingRatio);
+    const tileSize = unit * (1 - tileSpacingRatio);
     const offset = (unit - tileSize) / 2;
 
     for (const tile of grid.tiles) {
@@ -231,13 +240,23 @@ export class UI {
     const { playGrid } = this.layout;
     const size = grid.size;
     const unit = playGrid.width / size;
-    const tileSize = unit * (1 - CONFIG.tileSpacingRatio);
+    const tileSpacingRatio = this.tileSpacingRatio ?? CONFIG.tileSpacingRatio;
+    const tileSize = unit * (1 - tileSpacingRatio);
     const offset = (unit - tileSize) / 2;
     const { row, col } = grid.getTilePosition(tile);
     const x = playGrid.x + col * unit + offset - 6;
     const y = playGrid.y + row * unit + offset - 6;
     const frameSize = tileSize + 12;
     renderer.drawFrame(x, y, frameSize, frameSize, 6, CONFIG.selectionColor);
+  }
+
+  drawConfetti(renderer, pieces) {
+    if (!pieces?.length) {
+      return;
+    }
+    for (const piece of pieces) {
+      renderer.drawRect(piece.renderX, piece.renderY, piece.renderWidth, piece.renderHeight, piece.color);
+    }
   }
 
   drawCompletionPanel(renderer, state) {

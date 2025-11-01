@@ -87,14 +87,15 @@ export class Grid {
     return this.tiles[index];
   }
 
-  getTileAtPoint(point, layout) {
+  getTileAtPoint(point, layout, tileSpacingRatio = CONFIG.tileSpacingRatio) {
     const { playGrid } = layout;
     if (!playGrid) {
       return null;
     }
     const { size } = this;
     const unit = playGrid.width / size;
-    const tileSize = unit * (1 - CONFIG.tileSpacingRatio);
+    const spacingRatio = Math.max(0, Math.min(1, tileSpacingRatio));
+    const tileSize = unit * (1 - spacingRatio);
     const offset = (unit - tileSize) / 2;
     const localX = point.x - playGrid.x;
     const localY = point.y - playGrid.y;

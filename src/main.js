@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG, hexToRgba } from './config.js';
 import { LEVELS } from './levels.js';
 import { Grid } from './grid.js';
 import { Renderer } from './renderer.js';
@@ -23,7 +23,9 @@ let grid = new Grid(LEVELS[currentLevelIndex]);
 let layout = null;
 let selectedTile = null;
 let moves = 0;
-let state = 'playing'; // 'playing' | 'complete'
+let state = 'playing'; // 'playing' | 'celebrating' | 'complete'
+let celebrationTimer = 0;
+let confettiPieces = [];
 let pendingResizeFrame = 0;
 let textures = new Map();
 let currentTexture = null;
@@ -76,6 +78,8 @@ function resetLevel(index) {
   moves = 0;
   selectedTile = null;
   state = 'playing';
+  celebrationTimer = 0;
+  confettiPieces = [];
   grid.pulseTimer = 0;
   layout = ui.computeLayout(canvas.width, canvas.height, grid.size);
   if (textures.size > 0) {
@@ -111,6 +115,9 @@ function handleTap(point) {
   if (!currentTexture) {
     return;
   }
+  if (state === 'celebrating') {
+    return;
+  }
   if (state === 'complete') {
     const action = ui.hitTestCompletion(point);
     if (action === 'panelRestart') {
@@ -134,7 +141,7 @@ function handleTap(point) {
     return;
   }
 
-  const tile = grid.getTileAtPoint(point, layout);
+  const tile = grid.getTileAtPoint(point, layout, ui.getTileSpacingRatio());
   if (!tile) {
     selectedTile = null;
     return;
@@ -150,8 +157,8 @@ function handleTap(point) {
     selectedTile = null;
     moves += 1;
     if (grid.isSolved()) {
-      state = 'complete';
       grid.triggerSolvePulse();
+      beginCelebration();
     }
     return;
   }
@@ -159,20 +166,131 @@ function handleTap(point) {
   selectedTile = tile;
 }
 
+function randomInRange(range) {
+  const [min, max] = range;
+  return min + Math.random() * (max - min);
+}
+
+function randomColorRgba(alpha = 0.92) {
+  const palette = CONFIG.colors;
+  const color = palette[Math.floor(Math.random() * palette.length)] ?? '#ffffff';
+  return hexToRgba(color, alpha);
+}
+
+function applyConfettiPresentation(piece) {
+  const flip = Math.abs(Math.sin(piece.time * piece.flipSpeed));
+  const phase = piece.time * piece.flipSpeed + piece.swingPhase;
+  const widthScale = 0.45 + 0.55 * flip;
+  const heightScale = 0.45 + 0.55 * Math.abs(Math.cos(phase));
+  const swingOffset = Math.sin(phase) * piece.swingAmplitude;
+  piece.renderWidth = piece.baseWidth * widthScale;
+  piece.renderHeight = Math.max(2, piece.baseHeight * heightScale);
+  piece.renderX = piece.x + swingOffset - piece.renderWidth / 2;
+  piece.renderY = piece.y;
+}
+
+function resetConfettiPiece(piece, width, height, refreshColor = false) {
+  const baseSize = randomInRange(CONFIG.confettiSize);
+  const aspect = 0.45 + Math.random() * 0.85;
+  piece.baseWidth = baseSize;
+  piece.baseHeight = baseSize * aspect;
+  piece.x = Math.random() * width;
+  piece.y = -Math.random() * height - baseSize;
+  piece.fallSpeed = randomInRange(CONFIG.confettiFallSpeed);
+  piece.driftSpeed = randomInRange(CONFIG.confettiDriftSpeed);
+  piece.swingAmplitude = randomInRange(CONFIG.confettiSwing);
+  piece.swingPhase = Math.random() * Math.PI * 2;
+  piece.flipSpeed = randomInRange(CONFIG.confettiFlipSpeed);
+  piece.time = Math.random() * Math.PI * 2;
+  if (refreshColor || !piece.color) {
+    piece.color = randomColorRgba();
+  }
+  applyConfettiPresentation(piece);
+}
+
+function beginCelebration() {
+  state = 'celebrating';
+  celebrationTimer = 0;
+  const width = canvas.width;
+  const height = canvas.height;
+  confettiPieces = [];
+  for (let i = 0; i < CONFIG.confettiCount; i += 1) {
+    const piece = {
+      baseWidth: 0,
+      baseHeight: 0,
+      color: null,
+      fallSpeed: 0,
+      driftSpeed: 0,
+      swingAmplitude: 0,
+      swingPhase: 0,
+      flipSpeed: 0,
+      time: 0,
+      x: 0,
+      y: 0,
+      renderX: 0,
+      renderY: 0,
+      renderWidth: 0,
+      renderHeight: 0,
+    };
+    resetConfettiPiece(piece, width, height, true);
+    confettiPieces.push(piece);
+  }
+  updateConfetti(0);
+}
+
+function updateConfetti(delta) {
+  if (!confettiPieces.length) {
+    return;
+  }
+  const width = canvas.width;
+  const height = canvas.height;
+  for (const piece of confettiPieces) {
+    piece.time += delta;
+    piece.y += piece.fallSpeed * delta;
+    piece.x += piece.driftSpeed * delta;
+    if (piece.x < -80) {
+      piece.x += width + 160;
+    } else if (piece.x > width + 80) {
+      piece.x -= width + 160;
+    }
+    applyConfettiPresentation(piece);
+    if (piece.y > height + 40) {
+      resetConfettiPiece(piece, width, height, true);
+    }
+  }
+}
+
 function update(delta) {
   grid.update(delta);
   if (tutorial.active) {
     tutorial.timer += delta;
+  }
+  if (state === 'celebrating') {
+    celebrationTimer += delta;
+    updateConfetti(delta);
+    if (celebrationTimer >= CONFIG.celebrationDuration) {
+      state = 'complete';
+      confettiPieces = [];
+    }
   }
 }
 
 function render() {
   const level = LEVELS[currentLevelIndex % LEVELS.length];
   renderer.begin(canvas.width, canvas.height, CONFIG.baseBackground);
+  const celebrationProgress =
+    state === 'celebrating'
+      ? Math.min(1, celebrationTimer / CONFIG.celebrationDuration)
+      : state === 'complete'
+      ? 1
+      : 0;
   if (currentTexture) {
     ui.drawReference(renderer, currentTexture);
-    ui.drawBoard(renderer, grid, currentTexture);
+    ui.drawBoard(renderer, grid, currentTexture, { revealProgress: celebrationProgress });
     ui.drawSelection(renderer, selectedTile, grid);
+    if (confettiPieces.length > 0) {
+      ui.drawConfetti(renderer, confettiPieces);
+    }
   } else if (assetLoadError) {
     renderer.drawText('Failed to load textures', canvas.width / 2, canvas.height / 2, {
       font: CONFIG.textFont,
