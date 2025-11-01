@@ -279,6 +279,65 @@ export class UI {
     });
   }
 
+  drawTutorialOverlay(renderer, tutorial) {
+    if (!tutorial?.active) {
+      return;
+    }
+
+    const width = renderer.width;
+    const height = renderer.height;
+    renderer.drawRect(0, 0, width, height, CONFIG.tutorialOverlayColor);
+
+    const panelWidth = Math.min(width * 0.8, 540);
+    const panelHeight = Math.min(height * 0.65, 380);
+    const panelX = width / 2 - panelWidth / 2;
+    const panelY = height / 2 - panelHeight / 2;
+
+    renderer.drawRect(panelX, panelY, panelWidth, panelHeight, CONFIG.tutorialPanelColor);
+
+    renderer.drawText('Select tiles to swap.', panelX + panelWidth / 2, panelY + panelHeight * 0.28, {
+      font: CONFIG.panelTitleFont,
+      color: CONFIG.tutorialTextColor,
+      align: 'center',
+      baseline: 'middle',
+    });
+
+    renderer.drawText('Tap anywhere to start.', panelX + panelWidth / 2, panelY + panelHeight * 0.42, {
+      font: CONFIG.smallTextFont,
+      color: CONFIG.tutorialHintTextColor,
+      align: 'center',
+      baseline: 'middle',
+    });
+
+    const demoAreaCenterX = panelX + panelWidth / 2;
+    const demoAreaCenterY = panelY + panelHeight * 0.7;
+    const squareSize = Math.min(panelWidth * 0.22, panelHeight * 0.28);
+    const gap = squareSize * 0.5;
+    const leftStartX = demoAreaCenterX - gap / 2 - squareSize;
+    const rightStartX = demoAreaCenterX + gap / 2;
+    const tileY = demoAreaCenterY - squareSize / 2;
+
+    const cycle = 2.6;
+    const progress = (tutorial.timer % cycle) / cycle;
+    const swapProgress = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
+
+    const leftX = leftStartX + (rightStartX - leftStartX) * swapProgress;
+    const rightX = rightStartX + (leftStartX - rightStartX) * swapProgress;
+
+    renderer.drawRect(leftX, tileY, squareSize, squareSize, CONFIG.tutorialTileColorA);
+    renderer.drawFrame(leftX, tileY, squareSize, squareSize, Math.max(3, squareSize * 0.08), CONFIG.selectionColor);
+    renderer.drawRect(rightX, tileY, squareSize, squareSize, CONFIG.tutorialTileColorB);
+    renderer.drawFrame(rightX, tileY, squareSize, squareSize, Math.max(3, squareSize * 0.08), CONFIG.selectionColor);
+
+    const pointerRadius = Math.max(6, squareSize * 0.16);
+    const pointerProgress = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
+    const pointerX = leftStartX + squareSize / 2 + (rightStartX + squareSize / 2 - (leftStartX + squareSize / 2)) * pointerProgress;
+    const pointerY = demoAreaCenterY + squareSize * 0.65;
+    const pointerX1 = pointerX - pointerRadius;
+    const pointerY1 = pointerY - pointerRadius;
+    renderer.drawRect(pointerX1, pointerY1, pointerRadius * 2, pointerRadius * 2, CONFIG.tutorialPointerColor);
+  }
+
   hitTest(point) {
     if (!this.layout) {
       return null;
