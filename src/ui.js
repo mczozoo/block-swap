@@ -309,33 +309,130 @@ export class UI {
       baseline: 'middle',
     });
 
-    const demoAreaCenterX = panelX + panelWidth / 2;
-    const demoAreaCenterY = panelY + panelHeight * 0.7;
-    const squareSize = Math.min(panelWidth * 0.22, panelHeight * 0.28);
-    const gap = squareSize * 0.5;
-    const leftStartX = demoAreaCenterX - gap / 2 - squareSize;
-    const rightStartX = demoAreaCenterX + gap / 2;
-    const tileY = demoAreaCenterY - squareSize / 2;
+    const hintY = panelY + panelHeight * 0.42;
 
-    const cycle = 2.6;
-    const progress = (tutorial.timer % cycle) / cycle;
-    const swapProgress = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
+    const gridSize = 3;
+    const gridMarginTop = Math.max(panelHeight * 0.05, 36);
+    const gridMarginBottom = Math.max(panelHeight * 0.08, 32);
+    const gridTop = hintY + gridMarginTop;
+    const gridBottomLimit = panelY + panelHeight - gridMarginBottom;
+    const availableGridHeight = Math.max(0, gridBottomLimit - gridTop);
+    const maxGridSize = Math.max(0, Math.min(panelWidth * 0.6, availableGridHeight));
 
-    const leftX = leftStartX + (rightStartX - leftStartX) * swapProgress;
-    const rightX = rightStartX + (leftStartX - rightStartX) * swapProgress;
+    if (maxGridSize <= 0) {
+      return;
+    }
 
-    renderer.drawRect(leftX, tileY, squareSize, squareSize, CONFIG.tutorialTileColorA);
-    renderer.drawFrame(leftX, tileY, squareSize, squareSize, Math.max(3, squareSize * 0.08), CONFIG.selectionColor);
-    renderer.drawRect(rightX, tileY, squareSize, squareSize, CONFIG.tutorialTileColorB);
-    renderer.drawFrame(rightX, tileY, squareSize, squareSize, Math.max(3, squareSize * 0.08), CONFIG.selectionColor);
+    const spacingRatio = 0.18;
+    const tileSize = maxGridSize / (gridSize + (gridSize - 1) * spacingRatio);
+    const tileSpacing = tileSize * spacingRatio;
+    const actualGridSize = tileSize * gridSize + tileSpacing * (gridSize - 1);
+    const gridOriginX = panelX + panelWidth / 2 - actualGridSize / 2;
+    const gridOriginY = gridTop + (availableGridHeight - actualGridSize) / 2;
 
-    const pointerRadius = Math.max(6, squareSize * 0.16);
-    const pointerProgress = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
-    const pointerX = leftStartX + squareSize / 2 + (rightStartX + squareSize / 2 - (leftStartX + squareSize / 2)) * pointerProgress;
-    const pointerY = demoAreaCenterY + squareSize * 0.65;
-    const pointerX1 = pointerX - pointerRadius;
-    const pointerY1 = pointerY - pointerRadius;
-    renderer.drawRect(pointerX1, pointerY1, pointerRadius * 2, pointerRadius * 2, CONFIG.tutorialPointerColor);
+    const tileCenter = (row, col) => ({
+      x: gridOriginX + col * (tileSize + tileSpacing) + tileSize / 2,
+      y: gridOriginY + row * (tileSize + tileSpacing) + tileSize / 2,
+    });
+
+    const tilePosition = (row, col) => ({
+      x: gridOriginX + col * (tileSize + tileSpacing),
+      y: gridOriginY + row * (tileSize + tileSpacing),
+    });
+
+    for (let row = 0; row < gridSize; row += 1) {
+      for (let col = 0; col < gridSize; col += 1) {
+        const { x, y } = tilePosition(row, col);
+        renderer.drawRect(x, y, tileSize, tileSize, CONFIG.tutorialTileColorDefault);
+      }
+    }
+
+    const firstTile = { row: 0, col: 0 };
+    const secondTile = { row: 1, col: 2 };
+    const firstTileStart = tilePosition(firstTile.row, firstTile.col);
+    const secondTileStart = tilePosition(secondTile.row, secondTile.col);
+    const firstTileCenter = tileCenter(firstTile.row, firstTile.col);
+    const secondTileCenter = tileCenter(secondTile.row, secondTile.col);
+
+    const firstSelectDuration = 0.7;
+    const pointerTravelDuration = 0.8;
+    const secondSelectDuration = 0.7;
+    const swapDuration = 0.8;
+    const pauseDuration = 0.6;
+    const cycle = firstSelectDuration + pointerTravelDuration + secondSelectDuration + swapDuration + pauseDuration;
+    const cycleTime = tutorial.timer % cycle;
+
+    const firstSelectEnd = firstSelectDuration;
+    const pointerTravelEnd = firstSelectEnd + pointerTravelDuration;
+    const secondSelectEnd = pointerTravelEnd + secondSelectDuration;
+    const swapEnd = secondSelectEnd + swapDuration;
+
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const lerpPoint = (from, to, t) => ({
+      x: lerp(from.x, to.x, t),
+      y: lerp(from.y, to.y, t),
+    });
+
+    let firstTileDraw = { ...firstTileStart };
+    let secondTileDraw = { ...secondTileStart };
+    let showFirstSelection = cycleTime < swapEnd;
+    let showSecondSelection = cycleTime >= pointerTravelEnd && cycleTime < swapEnd;
+
+    if (cycleTime >= secondSelectEnd && cycleTime < swapEnd) {
+      const swapProgress = (cycleTime - secondSelectEnd) / swapDuration;
+      firstTileDraw = lerpPoint(firstTileStart, secondTileStart, swapProgress);
+      secondTileDraw = lerpPoint(secondTileStart, firstTileStart, swapProgress);
+    } else if (cycleTime >= swapEnd) {
+      firstTileDraw = { ...secondTileStart };
+      secondTileDraw = { ...firstTileStart };
+      showFirstSelection = false;
+      showSecondSelection = false;
+    }
+
+    renderer.drawRect(firstTileDraw.x, firstTileDraw.y, tileSize, tileSize, CONFIG.tutorialTileColorA);
+    renderer.drawRect(secondTileDraw.x, secondTileDraw.y, tileSize, tileSize, CONFIG.tutorialTileColorB);
+
+    const selectionPadding = Math.max(6, tileSize * 0.12);
+    const selectionThickness = Math.max(3, tileSize * 0.08);
+
+    if (showFirstSelection) {
+      renderer.drawFrame(
+        firstTileDraw.x - selectionPadding,
+        firstTileDraw.y - selectionPadding,
+        tileSize + selectionPadding * 2,
+        tileSize + selectionPadding * 2,
+        selectionThickness,
+        CONFIG.selectionColor,
+      );
+    }
+
+    if (showSecondSelection) {
+      renderer.drawFrame(
+        secondTileDraw.x - selectionPadding,
+        secondTileDraw.y - selectionPadding,
+        tileSize + selectionPadding * 2,
+        tileSize + selectionPadding * 2,
+        selectionThickness,
+        CONFIG.selectionColor,
+      );
+    }
+
+    let pointerPositionPoint = firstTileCenter;
+    if (cycleTime < firstSelectEnd) {
+      pointerPositionPoint = firstTileCenter;
+    } else if (cycleTime < pointerTravelEnd) {
+      const pointerProgress = (cycleTime - firstSelectEnd) / pointerTravelDuration;
+      pointerPositionPoint = lerpPoint(firstTileCenter, secondTileCenter, pointerProgress);
+    } else {
+      pointerPositionPoint = secondTileCenter;
+    }
+
+    if (cycleTime < swapEnd) {
+      const pointerSize = Math.max(8, tileSize * 0.3);
+      const pointerTopLeftX = pointerPositionPoint.x - pointerSize / 2;
+      const pointerTopLeftY = pointerPositionPoint.y + tileSize * 0.6;
+      renderer.drawRect(pointerTopLeftX, pointerTopLeftY, pointerSize, pointerSize, CONFIG.tutorialPointerColor);
+    }
   }
 
   hitTest(point) {
