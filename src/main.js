@@ -20,8 +20,6 @@ const renderer = new Renderer(gl);
 const ui = new UI();
 let inputManager = null;
 
-const IMAGE_PATHS = Array.from(new Set(LEVELS.map((level) => level.image)));
-
 let currentLevelIndex = 0;
 let grid = new Grid(LEVELS[currentLevelIndex]);
 let layout = null;
@@ -32,6 +30,7 @@ let celebrationTimer = 0;
 let confettiPieces = [];
 let pendingResizeFrame = 0;
 let textures = new Map();
+const texturePromises = new Map();
 let currentTexture = null;
 let assetLoadError = null;
 const tutorial = {
@@ -39,6 +38,10 @@ const tutorial = {
   seen: false,
   timer: 0,
 };
+
+function getLevelAt(index) {
+  return LEVELS[index % LEVELS.length];
+}
 
 function updateViewportUnits() {
   const viewport = window.visualViewport;
@@ -77,7 +80,7 @@ function scheduleViewportSync() {
 
 function resetLevel(index) {
   currentLevelIndex = index;
-  const level = LEVELS[currentLevelIndex % LEVELS.length];
+  const level = getLevelAt(currentLevelIndex);
   grid.reset(level);
   moves = 0;
   selectedTile = null;
@@ -86,9 +89,8 @@ function resetLevel(index) {
   confettiPieces = [];
   grid.pulseTimer = 0;
   layout = ui.computeLayout(canvas.width, canvas.height, grid.size);
-  if (textures.size > 0) {
-    currentTexture = textures.get(level.image) || null;
-  }
+  ensureTextureForCurrentLevel();
+  preloadNextLevelTexture();
   if (currentLevelIndex === 0 && !tutorial.seen) {
     tutorial.active = true;
     tutorial.timer = 0;
@@ -362,14 +364,61 @@ async function loadImage(path) {
   });
 }
 
-async function loadTextures() {
-  const loadedTextures = new Map();
-  for (const path of IMAGE_PATHS) {
-    // eslint-disable-next-line no-await-in-loop
-    const image = await loadImage(path);
-    loadedTextures.set(path, renderer.createTextureFromImage(image));
+function requestTexture(path) {
+  if (textures.has(path)) {
+    return Promise.resolve(textures.get(path));
   }
-  return loadedTextures;
+  if (texturePromises.has(path)) {
+    return texturePromises.get(path);
+  }
+  const promise = loadImage(path)
+    .then((image) => renderer.createTextureFromImage(image))
+    .then((texture) => {
+      textures.set(path, texture);
+      texturePromises.delete(path);
+      return texture;
+    })
+    .catch((error) => {
+      texturePromises.delete(path);
+      throw error;
+    });
+  texturePromises.set(path, promise);
+  return promise;
+}
+
+function ensureTextureForCurrentLevel() {
+  const level = getLevelAt(currentLevelIndex);
+  const path = level.image;
+  if (textures.has(path)) {
+    assetLoadError = null;
+    currentTexture = textures.get(path);
+    return;
+  }
+  assetLoadError = null;
+  currentTexture = null;
+  requestTexture(path)
+    .then((texture) => {
+      const activeLevel = getLevelAt(currentLevelIndex);
+      if (activeLevel.image === path) {
+        currentTexture = texture;
+      }
+    })
+    .catch((error) => {
+      console.error(error);
+      assetLoadError = error;
+    });
+}
+
+function preloadNextLevelTexture() {
+  const nextLevelIndex = (currentLevelIndex + 1) % LEVELS.length;
+  const nextLevel = getLevelAt(nextLevelIndex);
+  const path = nextLevel.image;
+  if (textures.has(path) || texturePromises.has(path)) {
+    return;
+  }
+  requestTexture(path).catch((error) => {
+    console.error('Failed to preload texture', error);
+  });
 }
 
 async function initializeAsync() {
@@ -377,11 +426,10 @@ async function initializeAsync() {
   resizeCanvas();
 
   try {
-    textures = await loadTextures();
-    if (textures.size > 0) {
-      const level = LEVELS[currentLevelIndex % LEVELS.length];
-      currentTexture = textures.get(level.image) || null;
-    }
+    const level = getLevelAt(currentLevelIndex);
+    const texture = await requestTexture(level.image);
+    assetLoadError = null;
+    currentTexture = texture;
   } catch (error) {
     console.error(error);
     assetLoadError = error;
@@ -392,9 +440,7 @@ async function initializeAsync() {
   const loop = new GameLoop({ update, render });
   loop.start();
 
-  if (textures.size > 0) {
-    resetLevel(currentLevelIndex);
-  }
+  resetLevel(currentLevelIndex);
 
   if (window.ResizeObserver) {
     const resizeObserver = new ResizeObserver(() => {
