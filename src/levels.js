@@ -23,7 +23,7 @@ export const LEVELS = [
   {
     id: 1,
     size: 2,
-    minMoves: 3,
+    minMoves: 2,
     image: 'image/image1.jpg',
     target: createTarget(2),
     scrambled: createScrambledFromPermutation(2, [1, 2, 3, 0]),
@@ -31,7 +31,7 @@ export const LEVELS = [
   {
     id: 2,
     size: 2,
-    minMoves: 4,
+    minMoves: 3,
     image: 'image/image2.jpg',
     target: createTarget(2),
     scrambled: createScrambledFromPermutation(2, [2, 3, 0, 1]),
