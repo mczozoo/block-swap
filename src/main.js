@@ -309,7 +309,7 @@ function update(delta) {
 function render() {
   const level = LEVELS[currentLevelIndex % LEVELS.length];
   renderer.begin(canvas.width, canvas.height, CONFIG.baseBackground);
-  const revealDuration = Math.max(CONFIG.celebrationDuration * 0.5, 0.0001);
+  const revealDuration = Math.max(CONFIG.celebrationDuration, 0.0001);
   const revealProgress =
     state === 'celebrating'
       ? Math.min(1, celebrationTimer / revealDuration)
