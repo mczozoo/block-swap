@@ -6,6 +6,10 @@ import { UI } from './ui.js';
 import { InputManager } from './input.js';
 import { GameLoop } from './game-loop.js';
 
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 const canvas = document.getElementById('gameCanvas');
 const gl = canvas.getContext('webgl2', { antialias: true, alpha: false });
 if (!gl) {
@@ -291,15 +295,17 @@ function update(delta) {
 function render() {
   const level = LEVELS[currentLevelIndex % LEVELS.length];
   renderer.begin(canvas.width, canvas.height, CONFIG.baseBackground);
-  const celebrationProgress =
+  const revealDuration = Math.max(CONFIG.celebrationDuration * 0.5, 0.0001);
+  const revealProgress =
     state === 'celebrating'
-      ? Math.min(1, celebrationTimer / CONFIG.celebrationDuration)
+      ? Math.min(1, celebrationTimer / revealDuration)
       : state === 'complete'
       ? 1
       : 0;
+  const easedRevealProgress = easeOutCubic(revealProgress);
   if (currentTexture) {
     ui.drawReference(renderer, currentTexture);
-    ui.drawBoard(renderer, grid, currentTexture, { revealProgress: celebrationProgress });
+    ui.drawBoard(renderer, grid, currentTexture, { revealProgress: easedRevealProgress });
     ui.drawSelection(renderer, selectedTile, grid);
     if (confettiPieces.length > 0) {
       ui.drawConfetti(renderer, confettiPieces);
