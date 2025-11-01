@@ -28,6 +28,11 @@ let pendingResizeFrame = 0;
 let textures = new Map();
 let currentTexture = null;
 let assetLoadError = null;
+const tutorial = {
+  active: false,
+  seen: false,
+  timer: 0,
+};
 
 function updateViewportUnits() {
   const viewport = window.visualViewport;
@@ -76,6 +81,13 @@ function resetLevel(index) {
   if (textures.size > 0) {
     currentTexture = textures.get(level.image) || null;
   }
+  if (currentLevelIndex === 0 && !tutorial.seen) {
+    tutorial.active = true;
+    tutorial.timer = 0;
+  } else {
+    tutorial.active = false;
+    tutorial.timer = 0;
+  }
 }
 
 function nextLevel() {
@@ -87,6 +99,12 @@ function restartLevel() {
 }
 
 function handleTap(point) {
+  if (tutorial.active) {
+    tutorial.active = false;
+    tutorial.seen = true;
+    tutorial.timer = 0;
+    return;
+  }
   if (!layout) {
     return;
   }
@@ -143,6 +161,9 @@ function handleTap(point) {
 
 function update(delta) {
   grid.update(delta);
+  if (tutorial.active) {
+    tutorial.timer += delta;
+  }
 }
 
 function render() {
@@ -174,6 +195,9 @@ function render() {
   });
   if (state === 'complete') {
     ui.drawCompletionPanel(renderer, { moves, goalMoves: level.minMoves });
+  }
+  if (tutorial.active) {
+    ui.drawTutorialOverlay(renderer, tutorial);
   }
 }
 
