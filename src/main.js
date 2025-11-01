@@ -171,6 +171,10 @@ function randomInRange(range) {
   return min + Math.random() * (max - min);
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function randomColorRgba(alpha = 0.92) {
   const palette = CONFIG.colors;
   const color = palette[Math.floor(Math.random() * palette.length)] ?? '#ffffff';
@@ -189,13 +193,22 @@ function applyConfettiPresentation(piece) {
   piece.renderY = piece.y;
 }
 
-function resetConfettiPiece(piece, width, height, refreshColor = false) {
-  const baseSize = randomInRange(CONFIG.confettiSize);
+function resetConfettiPiece(piece, width, height, refreshColor = false, initial = false) {
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = width / dpr;
+  const cssHeight = height / dpr;
+  const referenceSize = Math.min(cssWidth, cssHeight);
+  const sizeScale = 1.1 * clamp(referenceSize / 720, 1, 2.2);
+  const baseSize = randomInRange(CONFIG.confettiSize) * sizeScale;
   const aspect = 0.45 + Math.random() * 0.85;
   piece.baseWidth = baseSize;
   piece.baseHeight = baseSize * aspect;
   piece.x = Math.random() * width;
-  piece.y = -Math.random() * height - baseSize;
+  if (initial) {
+    piece.y = Math.random() * height;
+  } else {
+    piece.y = -Math.random() * height - baseSize;
+  }
   piece.fallSpeed = randomInRange(CONFIG.confettiFallSpeed);
   piece.driftSpeed = randomInRange(CONFIG.confettiDriftSpeed);
   piece.swingAmplitude = randomInRange(CONFIG.confettiSwing);
@@ -232,7 +245,7 @@ function beginCelebration() {
       renderWidth: 0,
       renderHeight: 0,
     };
-    resetConfettiPiece(piece, width, height, true);
+    resetConfettiPiece(piece, width, height, true, true);
     confettiPieces.push(piece);
   }
   updateConfetti(0);
