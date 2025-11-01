@@ -221,7 +221,9 @@ function resetConfettiPiece(piece, width, height, refreshColor = false, initial 
   piece.time = Math.random() * Math.PI * 2;
   if (refreshColor || !piece.color) {
     piece.color = randomColorRgba();
+    piece.baseAlpha = piece.color[3];
   }
+  piece.opacity = 1;
   applyConfettiPresentation(piece);
 }
 
@@ -236,6 +238,8 @@ function beginCelebration() {
       baseWidth: 0,
       baseHeight: 0,
       color: null,
+      baseAlpha: 1,
+      opacity: 1,
       fallSpeed: 0,
       driftSpeed: 0,
       swingAmplitude: 0,
@@ -255,7 +259,8 @@ function beginCelebration() {
   updateConfetti(0);
 }
 
-function updateConfetti(delta) {
+function updateConfetti(delta, options = {}) {
+  const { allowRespawn = true } = options;
   if (!confettiPieces.length) {
     return;
   }
@@ -271,7 +276,7 @@ function updateConfetti(delta) {
       piece.x -= width + 160;
     }
     applyConfettiPresentation(piece);
-    if (piece.y > height + 40) {
+    if (piece.y > height + 40 && allowRespawn) {
       resetConfettiPiece(piece, width, height, true);
     }
   }
@@ -284,10 +289,19 @@ function update(delta) {
   }
   if (state === 'celebrating') {
     celebrationTimer += delta;
-    updateConfetti(delta);
-    if (celebrationTimer >= CONFIG.celebrationDuration) {
-      state = 'complete';
-      confettiPieces = [];
+    const isFadingOut = celebrationTimer >= CONFIG.celebrationDuration;
+    updateConfetti(delta, { allowRespawn: !isFadingOut });
+    if (isFadingOut) {
+      const fadeDuration = Math.max(CONFIG.confettiFadeOutDuration, 0.0001);
+      const fadeElapsed = celebrationTimer - CONFIG.celebrationDuration;
+      const fadeProgress = clamp(fadeElapsed / fadeDuration, 0, 1);
+      for (const piece of confettiPieces) {
+        piece.opacity = 1 - fadeProgress;
+      }
+      if (fadeProgress >= 1) {
+        state = 'complete';
+        confettiPieces = [];
+      }
     }
   }
 }

@@ -10,6 +10,7 @@ export const CONFIG = {
   confettiSwing: [16, 34],
   confettiFlipSpeed: [5, 9],
   confettiSize: [6, 16],
+  confettiFadeOutDuration: 0.6,
   baseBackground: [0.035, 0.04, 0.07, 1.0],
   hudBackground: [0.08, 0.09, 0.15, 0.88],
   panelBackground: [0.08, 0.12, 0.22, 0.94],
