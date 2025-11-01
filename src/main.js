@@ -16,7 +16,7 @@ const renderer = new Renderer(gl);
 const ui = new UI();
 let inputManager = null;
 
-const IMAGE_PATHS = ['image/image1.jpg', 'image/image2.jpg', 'image/image3.jpg'];
+const IMAGE_PATHS = Array.from(new Set(LEVELS.map((level) => level.image)));
 
 let currentLevelIndex = 0;
 let grid = new Grid(LEVELS[currentLevelIndex]);
@@ -25,7 +25,7 @@ let selectedTile = null;
 let moves = 0;
 let state = 'playing'; // 'playing' | 'complete'
 let pendingResizeFrame = 0;
-let textures = [];
+let textures = new Map();
 let currentTexture = null;
 let assetLoadError = null;
 
@@ -73,8 +73,8 @@ function resetLevel(index) {
   state = 'playing';
   grid.pulseTimer = 0;
   layout = ui.computeLayout(canvas.width, canvas.height, grid.size);
-  if (textures.length > 0) {
-    currentTexture = textures[currentLevelIndex % textures.length];
+  if (textures.size > 0) {
+    currentTexture = textures.get(level.image) || null;
   }
 }
 
@@ -146,6 +146,7 @@ function update(delta) {
 }
 
 function render() {
+  const level = LEVELS[currentLevelIndex % LEVELS.length];
   renderer.begin(canvas.width, canvas.height, CONFIG.baseBackground);
   if (currentTexture) {
     ui.drawReference(renderer, currentTexture);
@@ -167,11 +168,12 @@ function render() {
     });
   }
   ui.drawHud(renderer, {
-    level: LEVELS[currentLevelIndex % LEVELS.length].id,
+    level: level.id,
     moves,
+    goalMoves: level.minMoves,
   });
   if (state === 'complete') {
-    ui.drawCompletionPanel(renderer, { moves });
+    ui.drawCompletionPanel(renderer, { moves, goalMoves: level.minMoves });
   }
 }
 
@@ -186,11 +188,11 @@ async function loadImage(path) {
 }
 
 async function loadTextures() {
-  const loadedTextures = [];
+  const loadedTextures = new Map();
   for (const path of IMAGE_PATHS) {
     // eslint-disable-next-line no-await-in-loop
     const image = await loadImage(path);
-    loadedTextures.push(renderer.createTextureFromImage(image));
+    loadedTextures.set(path, renderer.createTextureFromImage(image));
   }
   return loadedTextures;
 }
@@ -201,8 +203,9 @@ async function initializeAsync() {
 
   try {
     textures = await loadTextures();
-    if (textures.length > 0) {
-      currentTexture = textures[currentLevelIndex % textures.length];
+    if (textures.size > 0) {
+      const level = LEVELS[currentLevelIndex % LEVELS.length];
+      currentTexture = textures.get(level.image) || null;
     }
   } catch (error) {
     console.error(error);
@@ -214,7 +217,7 @@ async function initializeAsync() {
   const loop = new GameLoop({ update, render });
   loop.start();
 
-  if (textures.length > 0) {
+  if (textures.size > 0) {
     resetLevel(currentLevelIndex);
   }
 

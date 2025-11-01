@@ -134,6 +134,9 @@ export class UI {
   }
 
   drawHud(renderer, state) {
+    if (!this.layout) {
+      return;
+    }
     const { hudRect, restartButton } = this.layout;
     renderer.drawRect(hudRect.x, hudRect.y, hudRect.width, hudRect.height, CONFIG.hudBackground);
 
@@ -145,7 +148,10 @@ export class UI {
       baseline: 'middle',
     });
 
-    renderer.drawText(`Moves ${state.moves}`, hudRect.x + hudRect.width / 2, centerY, {
+    const movesText =
+      typeof state.goalMoves === 'number' ? `Moves ${state.moves} / ${state.goalMoves}` : `Moves ${state.moves}`;
+
+    renderer.drawText(movesText, hudRect.x + hudRect.width / 2, centerY, {
       font: CONFIG.textFont,
       color: CONFIG.hudTextColor,
       baseline: 'middle',
@@ -235,6 +241,9 @@ export class UI {
   }
 
   drawCompletionPanel(renderer, state) {
+    if (!this.layout) {
+      return;
+    }
     const { completionPanel, panelRestart, panelNext } = this.layout;
     renderer.drawRect(completionPanel.x, completionPanel.y, completionPanel.width, completionPanel.height, CONFIG.panelBackground);
     renderer.drawText('Level Complete!', completionPanel.x + completionPanel.width / 2, completionPanel.y + completionPanel.height * 0.25, {
@@ -243,12 +252,29 @@ export class UI {
       align: 'center',
       baseline: 'middle',
     });
-    renderer.drawText(`Moves ${state.moves}`, completionPanel.x + completionPanel.width / 2, completionPanel.y + completionPanel.height * 0.45, {
+    const movesText =
+      typeof state.goalMoves === 'number' ? `Moves ${state.moves} / ${state.goalMoves}` : `Moves ${state.moves}`;
+
+    renderer.drawText(movesText, completionPanel.x + completionPanel.width / 2, completionPanel.y + completionPanel.height * 0.45, {
       font: CONFIG.textFont,
       color: CONFIG.buttonTextColor,
       align: 'center',
       baseline: 'middle',
     });
+
+    if (typeof state.goalMoves === 'number') {
+      renderer.drawText(
+        `Par ${state.goalMoves}`,
+        completionPanel.x + completionPanel.width / 2,
+        completionPanel.y + completionPanel.height * 0.58,
+        {
+          font: CONFIG.smallTextFont,
+          color: CONFIG.buttonTextColor,
+          align: 'center',
+          baseline: 'middle',
+        },
+      );
+    }
 
     renderer.drawRect(panelRestart.x, panelRestart.y, panelRestart.width, panelRestart.height, CONFIG.buttonBackground);
     renderer.drawRect(panelNext.x, panelNext.y, panelNext.width, panelNext.height, CONFIG.buttonBackground);
