@@ -3,7 +3,7 @@ export const CONFIG = {
   tileSpacingRatio: 0.1,
   swapDuration: 0.18,
   solvePulseDuration: 0.28,
-  celebrationDuration: 1.6,
+  celebrationDuration: 3.2,
   confettiCount: 140,
   confettiFallSpeed: [220, 360],
   confettiDriftSpeed: [-60, 60],
