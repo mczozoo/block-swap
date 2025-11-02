@@ -86,21 +86,21 @@ const LEVEL_DEFINITIONS = [
   {
     id: 1,
     size: 2,
-    image: 'image/image1.jpg',
-    scramble: [
-      [1, 0, 2, 3],
-      [0, 1, 3, 2],
-      [3, 1, 2, 0],
-    ],
-  },
-  {
-    id: 2,
-    size: 2,
     image: 'image/image2.jpg',
     scramble: [
       [1, 0, 2, 3],
       [0, 3, 2, 1],
       [2, 1, 0, 3],
+    ],
+  },
+  {
+    id: 2,
+    size: 2,
+    image: 'image/image1.jpg',
+    scramble: [
+      [1, 0, 2, 3],
+      [0, 1, 3, 2],
+      [3, 1, 2, 0],
     ],
   },
   {
